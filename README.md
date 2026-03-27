@@ -1,11 +1,13 @@
 # phi-chart
 
+[中文文档](README_CN.md)
+
 A Claude Code skill for AI-assisted Phigros chart creation. Generate RPEJSON charts from music analysis data, with collision detection, lyric-driven events, and multi-track instrument layering.
 
 ## Features
 
 - **Auto Chart Generation** — Feed music analysis JSON and get a complete chart with notes, events, and line performance
-- **Multi-Track Layering** — Different instruments map to different judge lines (Rock/Vocal → Line 0, Electronic → Line 1, Classical/Jazz → Line 2)
+- **Multi-Track Layering** — Judge lines are assigned from instrument families and vocal presence at runtime (for example Vocal/Rock → Line 0, Electronic → Line 1, Classical/Jazz → Line 2)
 - **Lyric-Driven Events** — Map song lyrics to visual line movements (sway, bounce, fade, rotate) that match the narrative
 - **Collision Detection** — Prevents all RPE errors: Tap&Hold overlap, Tap After Flick/Drag, Event overlap
 - **9 Note Patterns** — Quarter, eighth, sixteenth, triplet, doubles, alternate, stairs, stream, flick-tap
@@ -39,6 +41,8 @@ node scripts/create-chart.js \
   --lines 24
 ```
 
+The command prints a JSON result containing `chartDir` and `chartFile`. The generated chart file is named `<chart_id>.json`, not a fixed `chart.json`.
+
 ### 2. Auto-generate from music analysis
 
 Get music analysis from an AI that can listen to audio (Gemini, GPT-4o, etc.) using the prompt template in SKILL.md, then:
@@ -47,24 +51,24 @@ Get music analysis from an AI that can listen to audio (Gemini, GPT-4o, etc.) us
 # Normalize field names if needed
 node scripts/normalize-analysis.js --input raw.json --output analysis.json
 
-# Generate chart
-node scripts/auto-chart.js --chart chart.json --analysis analysis.json --difficulty normal
+# Generate chart (replace with the chartFile returned by create-chart.js)
+node scripts/auto-chart.js --chart ./charts/20260327001/20260327001.json --analysis analysis.json --difficulty normal
 
 # Or use multi-track data for finer control
-node scripts/multitrack-chart.js --chart chart.json --tracks tracks.json --analysis analysis.json
+node scripts/multitrack-chart.js --chart ./charts/20260327001/20260327001.json --tracks tracks.json --analysis analysis.json --difficulty normal
 ```
 
 ### 3. Validate and export
 
 ```bash
 # Check for RPE errors
-node scripts/validate-chart.js --chart chart.json
+node scripts/validate-chart.js --chart ./charts/20260327001/20260327001.json
 
-# Package as PEZ
+# Package as PEZ (the exporter reads Chart / Song / Picture from info.txt)
 node scripts/export-pez.js --dir ./chart_folder --output song.pez
 
 # Generate Phira metadata (optional)
-node scripts/gen-phira.js --chart chart.json --dir ./chart_folder
+node scripts/gen-phira.js --chart ./charts/20260327001/20260327001.json --dir ./chart_folder
 ```
 
 ## Scripts
@@ -77,7 +81,7 @@ node scripts/gen-phira.js --chart chart.json --dir ./chart_folder
 | `gen-pattern.js` | Generate common note patterns |
 | `validate-chart.js` | Validate chart for RPE errors |
 | `auto-chart.js` | Auto-generate chart from analysis data |
-| `multitrack-chart.js` | Generate from multi-track instrument data with lyric events |
+| `multitrack-chart.js` | Generate from multi-track instrument data, vocal state, rhythm hints, and lyric imagery |
 | `clean-rebuild.js` | Safe rebuild with collision detection |
 | `normalize-analysis.js` | Normalize external AI analysis field names |
 | `gen-phira.js` | Generate Phira info.yml + extra.json |
@@ -108,7 +112,7 @@ See SKILL.md for the complete specification and prompt templates (Chinese & Engl
 
 ## Multi-Track Format
 
-For finer control, provide per-instrument timeline data:
+For finer control, provide per-instrument timeline data. The generator will infer judge-line routing, note emphasis, and line events from `active_instruments`, `vocal_state`, `lyrics`, and `drum_rhythm` instead of relying on a song-specific template:
 
 ```json
 {

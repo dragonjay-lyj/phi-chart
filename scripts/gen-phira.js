@@ -19,8 +19,8 @@ if (!args.chart || !args.dir) {
 
 const chart = JSON.parse(fs.readFileSync(args.chart, 'utf-8'));
 const meta = chart.META;
-const bpm = chart.BPMList[0].bpm;
 const previewStart = parseFloat(args.previewStart) || 60;
+const chartFile = path.basename(args.chart);
 
 // Generate info.yml
 const infoYml = `id: ~
@@ -30,8 +30,8 @@ difficulty: ${parseFloat(meta.level.replace(/[^0-9.]/g, '')) || 7.0}
 level: "${meta.level}"
 charter: "${meta.charter}"
 composer: "${meta.composer}"
-illustrator: "${meta.illustration || 'Unknown'}"
-chart: "${meta.id}.json"
+illustrator: "${meta.illustrator || meta.illustration || 'Unknown'}"
+chart: "${chartFile}"
 music: "${meta.song}"
 illustration: "${meta.background}"
 previewStart: ${previewStart}

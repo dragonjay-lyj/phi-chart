@@ -137,6 +137,7 @@ function main() {
       charter: charter,
       composer: composer,
       id: chartId,
+      illustrator: illustrator,
       level: level,
       name: chartName,
       offset: offset,

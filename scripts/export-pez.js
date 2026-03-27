@@ -6,7 +6,7 @@
  * Usage:
  *   node export-pez.js --dir <chart_dir> --output <output.pez>
  *
- * chart_dir 中需要包含 chart.json、info.txt、音乐文件、曲绘文件
+ * chart_dir 中需要包含 info.txt、谱面 json、音乐文件、曲绘文件
  * 所有文件会被放在 ZIP 根目录下（无子目录）
  */
 
@@ -21,6 +21,37 @@ function parseArgs(argv) {
     args[key] = argv[i + 1];
   }
   return args;
+}
+
+function parseInfoTxt(infoContent) {
+  const fields = {};
+  for (const line of infoContent.split(/\r?\n/)) {
+    const match = line.match(/^([^:]+):\s*(.+)$/);
+    if (match) {
+      fields[match[1].trim()] = match[2].trim();
+    }
+  }
+  return fields;
+}
+
+function findChartJson(chartDir) {
+  const jsonFiles = fs.readdirSync(chartDir).filter(file => {
+    const fullPath = path.join(chartDir, file);
+    return fs.statSync(fullPath).isFile()
+      && path.extname(file).toLowerCase() === '.json'
+      && file !== 'extra.json';
+  });
+
+  if (jsonFiles.length === 1) {
+    return jsonFiles[0];
+  }
+
+  const numericJson = jsonFiles.find(file => /^\d+\.json$/.test(file));
+  if (numericJson) {
+    return numericJson;
+  }
+
+  return null;
 }
 
 function main() {
@@ -39,30 +70,33 @@ function main() {
     process.exit(1);
   }
 
-  // Check required files
-  const requiredFiles = ['chart.json', 'info.txt'];
+  const infoPath = path.join(chartDir, 'info.txt');
   const missingFiles = [];
-  for (const f of requiredFiles) {
-    if (!fs.existsSync(path.join(chartDir, f))) {
-      missingFiles.push(f);
-    }
+
+  if (!fs.existsSync(infoPath)) {
+    missingFiles.push('info.txt');
   }
 
-  // Read info.txt to find music and image files
-  const infoPath = path.join(chartDir, 'info.txt');
+  let infoFields = {};
+  let chartFile = null;
   let songFile = null;
   let imageFile = null;
 
   if (fs.existsSync(infoPath)) {
-    const infoContent = fs.readFileSync(infoPath, 'utf-8');
-    const lines = infoContent.split('\n');
-    for (const line of lines) {
-      const match = line.match(/^(\w+):\s*(.+)$/);
-      if (match) {
-        if (match[1] === 'Music') songFile = match[2].trim();
-        if (match[1] === 'Image') imageFile = match[2].trim();
-      }
-    }
+    infoFields = parseInfoTxt(fs.readFileSync(infoPath, 'utf-8'));
+    chartFile = infoFields.Chart || null;
+    songFile = infoFields.Song || infoFields.Music || null;
+    imageFile = infoFields.Picture || infoFields.Image || null;
+  }
+
+  if (!chartFile) {
+    chartFile = findChartJson(chartDir);
+  }
+
+  if (!chartFile) {
+    missingFiles.push('chart json file');
+  } else if (!fs.existsSync(path.join(chartDir, chartFile))) {
+    missingFiles.push(chartFile + ' (谱面文件)');
   }
 
   if (songFile && !fs.existsSync(path.join(chartDir, songFile))) {
@@ -80,10 +114,16 @@ function main() {
     process.exit(1);
   }
 
+  if (fs.existsSync(outputPath)) {
+    fs.unlinkSync(outputPath);
+  }
+
+  const outputBase = path.basename(outputPath);
+
   // Collect all files in chartDir (no subdirectories for PEZ)
   const files = fs.readdirSync(chartDir).filter(f => {
     const fullPath = path.join(chartDir, f);
-    return fs.statSync(fullPath).isFile();
+    return fs.statSync(fullPath).isFile() && f !== outputBase && f !== outputBase + '.zip';
   });
 
   // Check for extra.json (shader config)
@@ -93,11 +133,6 @@ function main() {
   try {
     // Try using PowerShell Compress-Archive on Windows
     const filesArg = files.map(f => `"${path.join(chartDir, f)}"`).join(',');
-
-    // Remove existing output if any
-    if (fs.existsSync(outputPath)) {
-      fs.unlinkSync(outputPath);
-    }
 
     // Use PowerShell to create ZIP
     const psCommand = `powershell -NoProfile -Command "Compress-Archive -Path ${filesArg} -DestinationPath '${outputPath}'"`;
@@ -127,6 +162,7 @@ function main() {
     console.log(JSON.stringify({
       success: true,
       outputPath: outputPath,
+      chartFile: chartFile,
       fileCount: files.length,
       files: files,
       size: `${(stats.size / 1024).toFixed(1)} KB`,

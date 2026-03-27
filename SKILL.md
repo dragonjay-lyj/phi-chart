@@ -43,7 +43,7 @@ allowed-tools: Read Write Edit Bash Agent AskUserQuestion
 ### Phase 2: 生成谱面骨架
 
 调用 `scripts/create-chart.js` 生成：
-- `chart.json` — 标准 RPEJSON
+- `<谱面ID>.json` — 标准 RPEJSON
 - `info.txt` — 元数据
 - 提示用户将音乐/曲绘文件放入对应目录
 
@@ -230,7 +230,7 @@ level: "HD Lv.7"              # 难度等级文字（必填）
 charter: "DragonJay"          # 谱师（必填）
 composer: "周杰伦"             # 曲师（必填）
 illustrator: "Unknown"        # 画师（必填）
-chart: "chart.json"           # 谱面文件名（必填）
+chart: "202603260.json"       # 谱面文件名（必填）
 music: "song.ogg"             # 音乐文件名（必填）
 illustration: "bg.jpg"        # 曲绘文件名（必填）
 previewStart: 123.0           # 预览开始时间秒（必填）
@@ -348,7 +348,7 @@ Phira 支持在 `extra.json` 中配置视觉特效（着色器）和视频背景
 | `gen-pattern.js` | 生成常见音符排列模式（输出 JSON 传给 add-notes） |
 | `validate-chart.js` | 验证谱面合法性 |
 | `auto-chart.js` | 根据音乐分析数据自动生成谱面（核心） |
-| `multitrack-chart.js` | 根据多音轨分析数据生成精细谱面（进阶） |
+| `multitrack-chart.js` | 根据多音轨分析数据、人声状态、歌词和节奏提示生成精细谱面（进阶） |
 | `clean-rebuild.js` | 安全重建谱面（碰撞检测+歌词事件） |
 | `normalize-analysis.js` | 标准化外部AI分析数据的字段名 |
 | `gen-phira.js` | 生成 Phira 兼容的 info.yml 和 extra.json |
@@ -539,10 +539,10 @@ node scripts/create-chart.js --output <dir> --name <name> --bpm <bpm> ...
 # （用户粘贴或提供路径）
 
 # 3. 自动生成谱面
-node scripts/auto-chart.js --chart <chart.json> --analysis <analysis.json> --difficulty normal
+node scripts/auto-chart.js --chart <chart-file.json> --analysis <analysis.json> --difficulty normal
 
 # 4. 验证
-node scripts/validate-chart.js --chart <chart.json>
+node scripts/validate-chart.js --chart <chart-file.json>
 
 # 5. 导出
 node scripts/export-pez.js --dir <chart_dir> --output <name.pez>
